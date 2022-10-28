@@ -84,11 +84,16 @@ p(z_i|\boldsymbol{y}=0, \boldsymbol{x}, z_{-i}, \beta, c) &= p(z_i|\boldsymbol{y
 & = \mathbf{1}_{(z_i \leq c)} \times \text{normal}(\beta x_i, 1)
 \end{aligned}
 $$
-From the expressions above,  $p(z_i|\boldsymbol{y}, \boldsymbol{x}, z_{-i}, \beta, c)$ is a truncated normal density depending on $y_i$, that is, the normal density is truncated on the right side over the interval $z_i >c$ if $y_i = 1$ and it will be truncated on the left side over the interval $z_i \leq c$.
+From the expressions above,  $p(z_i|\boldsymbol{y}, \boldsymbol{x}, z_{-i}, \beta, c)$ is a truncated normal density depending on $y_i$, that is, 
+the normal density is truncated on the right side over the interval $z_i >c$ if $y_i = 1$ and it will be truncated on the left side over the
+interval $z_i \leq c$.
 
 \vspace{1,5em}
 
-c)Letting $\tau_\beta^2 = \tau_c^2 = 16$ , implement a Gibbs sampling scheme that approximates the joint posterior distribution of $\boldsymbol{Z}$, $\beta$, and $c$ (a method for sampling from constrained normal distributions is outlined in Section 12.1.1). Run the Gibbs sampler long enough so that the effective sample sizes of all unknown parameters are greater than 1,000 (including the $Z_i$’s). Compute the autocorrelation function of the parameters and discuss the mixing of the Markov chain.
+c)Letting $\tau_\beta^2 = \tau_c^2 = 16$ , implement a Gibbs sampling scheme that approximates the joint posterior distribution 
+of $\boldsymbol{Z}$, $\beta$, and $c$ (a method for sampling from constrained normal distributions is outlined in Section 12.1.1).
+Run the Gibbs sampler long enough so that the effective sample sizes of all unknown parameters are greater than 1,000 (including the $Z_i$’s). 
+Compute the autocorrelation function of the parameters and discuss the mixing of the Markov chain.
 
 ```{r}
 library(coda)
@@ -176,7 +181,8 @@ plot(bigC, xlab = 'iteration', ylab = 'c',
 
 Comments: As we have seen in the traceplots above, the  performances of two MCMC samplers  are not bad, and we do not see any sampler takes a long
 time between jumps to different parts of the parameter space. From the atuo-correlation figures, they do not have a high
-degree of autocorrelation. For $\beta$, the autocorrelation after lag-20 reaches as low as 0.2. The same is variable c. The autocorrelation after lag-25 is around 0.2. Therefore, the MCMC samplers have a good mixing.
+degree of autocorrelation. For $\beta$, the autocorrelation after lag-20 reaches as low as 0.2. The same is variable c. The autocorrelation after 
+lag-25 is around 0.2. Therefore, the MCMC samplers have a good mixing.
 
 \vspace{1em}
 
@@ -193,7 +199,8 @@ sum(BETA > 0)/length(BETA)
 \vspace{2em}
 
 # 7.1 Jeffreys’ prior
-For the multivariate normal model, Jeffreys’ rule for generating a prior distribution on $(\boldsymbol{\theta}, \Sigma)$ gives $p_J(\boldsymbol{\theta}, \Sigma)\propto |\Sigma|^{-(p+2)/2}$.
+For the multivariate normal model, Jeffreys’ rule for generating a prior distribution on $(\boldsymbol{\theta}, \Sigma)$ gives
+$p_J(\boldsymbol{\theta}, \Sigma)\propto |\Sigma|^{-(p+2)/2}$.
 
 \vspace{1em}
 
@@ -204,7 +211,8 @@ Since the integral of the function does not exist, the function $p_J$ cannot acu
 
 \vspace{1em}
 
-b)Let $p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n})$ be the probability density that is proportional to $p_J(\boldsymbol{\theta}, \Sigma)\times p(\boldsymbol{y_1}, \dots, \boldsymbol{y_n}|\boldsymbol{\theta}, \Sigma)$. Obtain the form of $p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n}), p_J(\boldsymbol{\theta}|\Sigma, \boldsymbol{y_1}, \dots, \boldsymbol{y_n})$ and $p_J(\Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n})$.
+b)Let $p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n})$ be the probability density that is proportional to
+$p_J(\boldsymbol{\theta}, \Sigma)\times p(\boldsymbol{y_1}, \dots, \boldsymbol{y_n}|\boldsymbol{\theta}, \Sigma)$. Obtain the form of $p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n}), p_J(\boldsymbol{\theta}|\Sigma, \boldsymbol{y_1}, \dots, \boldsymbol{y_n})$ and $p_J(\Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n})$.
 
 $$
 \begin{aligned}
@@ -228,11 +236,18 @@ $$
 
 # 7.3 Australian crab data
 
-The files *bluecrab.dat* and *orangecrab.dat* contain measurements of body depth $(Y_1)$ and rear width $(Y_2)$, in millimeters, made on 50 male crabs from each of two species, blue and orange. We will model these data using a bivariate normal distribution.
+The files *bluecrab.dat* and *orangecrab.dat* contain measurements of body depth $(Y_1)$ and rear width $(Y_2)$, in millimeters, made on 50 male 
+crabs from each of two species, blue and orange. We will model these data using a bivariate normal distribution.
 
 \vspace{1em}
 
-a)For each of the two species, obtain posterior distributions of the population mean $\boldsymbol{\theta}$ and covariance matrix $\Sigma$ as follows: Using the semiconjugate prior distributions for $\boldsymbol{\theta}$ and $\Sigma$, set $\boldsymbol{\mu}_0$ equal to the sample mean of the data, $\boldsymbol{\Lambda}_0$ and $\boldsymbol{S}_0$ equal to the sample covariance matrix and $\nu_0 = 4$. Obtain 10,000 posterior samples of $\boldsymbol{\theta}$ and $\Sigma$. Note that this “prior” distribution loosely centers the parameters around empirical estimates based on the observed data (and is very similar to the unit information prior described in the previous exercise). It cannot be considered as our true prior distribution, as it was derived from the observed data. However, it can be roughly considered as the prior distribution of someone with weak but unbiased information.
+a)For each of the two species, obtain posterior distributions of the population mean $\boldsymbol{\theta}$ and covariance matrix $\Sigma$ 
+as follows: Using the semiconjugate prior distributions for $\boldsymbol{\theta}$ and $\Sigma$, set $\boldsymbol{\mu}_0$ equal to the sample mean 
+of the data, $\boldsymbol{\Lambda}_0$ and $\boldsymbol{S}_0$ equal to the sample covariance matrix and $\nu_0 = 4$. Obtain 10,000 posterior samples 
+of $\boldsymbol{\theta}$ and $\Sigma$. Note that this “prior” distribution loosely centers the parameters around empirical estimates based on 
+the observed data (and is very similar to the unit information prior described in the previous exercise). It cannot be considered as our true 
+prior distribution, as it was derived from the observed data. However, it can be roughly considered as the prior distribution of someone with 
+weak but unbiased information.
 
 \vspace{1.5em}
 
@@ -306,7 +321,8 @@ Comments: From the figures, the orange crab species has higher measurements for 
 \vspace{1em}
 
 c)From each covariance matrix obtained from the Gibbs sampler, obtain the corresponding correlation coefficient. From these values, plot
-posterior densities of the correlations $\rho_\text{blue}$ and $\rho_\text{orange}$ for the two groups. Evaluate differences between the two species by comparing these posterior distributions. In particular, obtain an approximation to $\text{Pr}(\rho_\text{blue}< \rho_\text{orange}|\boldsymbol{y}_\text{blue}, \boldsymbol{y}_\text{orange})$. What do the results suggest about differences between the two populations?
+posterior densities of the correlations $\rho_\text{blue}$ and $\rho_\text{orange}$ for the two groups. Evaluate differences between the two 
+species by comparing these posterior distributions. In particular, obtain an approximation to $\text{Pr}(\rho_\text{blue}< \rho_\text{orange}|\boldsymbol{y}_\text{blue}, \boldsymbol{y}_\text{orange})$. What do the results suggest about differences between the two populations?
 
 ```{r}
 library(ggplot2)
@@ -324,6 +340,10 @@ ggplot(cor_df, aes(x = corr, fill = species)) +
 mean(orangecrab_cor > bluecrab_cor)
 ```
 
-Comments: We first obtain the correlation coefficients for two species. From the result, The orange crab species appears to have higher correlation between its two measurements than the blue species. The probability that the correlation between two measurements for orange crab is higher than that of the blue crab species is `r  paste(mean(orangecrab_cor > bluecrab_cor)* 100, '%', sep = '')`. The differences between these two populations suggest if the depth of one orange crab is large, it is higher probability that the orange crab will have long width in the process of growing up compared to the same depth of one corresponding blue crab.
+Comments: We first obtain the correlation coefficients for two species. From the result, The orange crab species appears to have higher
+correlation between its two measurements than the blue species. The probability that the correlation between two measurements for orange crab 
+is higher than that of the blue crab species is `r  paste(mean(orangecrab_cor > bluecrab_cor)* 100, '%', sep = '')`. The differences between 
+these two populations suggest if the depth of one orange crab is large, it is higher probability that the orange crab will have long width in 
+the process of growing up compared to the same depth of one corresponding blue crab.
 
 
