@@ -1,0 +1,329 @@
+---
+title: "HW 6 for Statistical Computing"
+author: "Yuanhong Wu"
+date: "2022-10-24"
+output: pdf_document
+header-include:
+  - \usepackage{amsmath}
+  - \usepackage{amsfonts, amssymb}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 6.3 Probit regression
+\textbf{A panel study followed 25 married couples over a period of five years. One item of interest is the relationship between divorce rates and the various characteristics of the couples. For example, the researchers would like to model the probability of divorce as a function of age differential, recorded as the man’s age minus the woman’s age. The data can be found in the file}  *\textbf{divorce.dat}*. \textbf{We will model these data with probit regression, in which a binary variable $Y_i$ is described in terms of an explanatory variable $x_i$ via the following latent variable model:}
+$$
+\begin{aligned}
+Z_i &= \beta x_i + \epsilon_i\\
+Y_i &= \delta_{(c, \infty)}(Z_i)
+\end{aligned}
+$$
+\textbf{where} $\beta$ \textbf{and} $c$ \textbf{are unknown coefficients}, $\epsilon_1, \cdots , \epsilon_n \sim\mathrm{i.i.d.}\enspace\mathrm{normal}(0,1)$ \textbf{and} $\delta_{(c, \infty)}(z) = 1\enspace \mathrm{if}\enspace z> c$ \textbf{and equals zero otherwise.}
+
+\vspace{1em}
+
+a)Assuming $\beta \sim \text{normal}(0, \tau_\beta^2)$ obtain the full conditional distribution $p(\beta|\boldsymbol{y}, \boldsymbol{x}, \boldsymbol{z}, c)$ 
+
+
+\vspace{1.5em}
+
+From the question, we can get the distribution of  $Z_i$ conditional on $x_i$ and $\beta$, and the full conditional distribution of $y_i$. 
+
+$$
+\begin{aligned}
+p(z_i|x_i, \beta) &\sim \text{normal}(\beta x_i, 1)\\
+p(y_i|c, z_i, \beta, x_i) &\sim \mathbf{1}(z_i>c)y_i  + \mathbf{1}(z_i \leq c)(1-y_i)
+\end{aligned}
+$$
+Then we find the full conditional distribution of $\beta$
+
+$$
+\begin{aligned}
+p(\beta|\boldsymbol{x}, \boldsymbol{y}, \boldsymbol{z}, c) &\propto p(\boldsymbol{x}, \boldsymbol{y}, \boldsymbol{z}, c|\beta) \times p(\beta)\\
+& = p(\boldsymbol{y}|\boldsymbol{x}, \boldsymbol{z}, c, \beta) \times p(\boldsymbol{x}, \boldsymbol{z}, c|\beta) \times p(\beta)\\
+& \propto p(\boldsymbol{y}|\boldsymbol{x}, \boldsymbol{z}, c, \beta) \times p(\boldsymbol{z}|\boldsymbol{x}, \beta) \times p(\beta)\\
+& \propto \prod_{i = 1}^n \bigg\{\big[ \mathbf{1}(z_i>c)y_i  + \mathbf{1}(z_i \leq c)(1-y_i)\big]  p(z_i|x_i, \beta)\bigg\} \times p(\beta)\\
+& \propto \prod_{i = 1}^n p(z_i|x_i, \beta) \times p(\beta)\\
+& \propto \text{exp}\{ -\frac12 \sum _{i=1}^n (z_i - \beta x_i)^2\} \times \text{exp}\{ -\frac12 \frac{\beta^2}{\tau_{\beta}^2}\}\\
+& \propto \text{exp}\bigg\{  -\frac12\big[  (\sum x_i^2  + \frac1{\tau_\beta^2})\beta^2 - 2\beta\sum(x_iz_i)\big]  \bigg\}\\
+& \propto \text{normal}(\mu_\beta, \sigma_\beta^2)
+\end{aligned}
+$$
+where $\mu_\beta = \frac{\sum(x_i z_i)}{\sum x_i^2 + 1/\tau_\beta^2}$, and $\sigma^2_\beta = \frac1{\sum x_i^2 + 1/\tau_\beta^2}$.
+
+
+
+\vspace{1.5em}
+
+b)Assuming $c\sim \text{normal}(0, \tau_c^2)$, show that $p(c|\boldsymbol{y}, \boldsymbol{x}, \boldsymbol{z}, \beta)$ is a constrained
+normal density, i.e. proportional to a normal density but constrained
+to lie in an interval. Similarly, show that $p(z_i|\boldsymbol{y}, \boldsymbol{x}, z_{-i}, \beta, c)$ is proportional to a normal density but constrained to be either above $c$ or below $c$, depending on $y_i$.
+
+$$
+\begin{aligned}
+p(c|\boldsymbol{x}, \boldsymbol{y}, \boldsymbol{z}, \beta) & \propto p(\boldsymbol{x}, \boldsymbol{y}, \boldsymbol{z}, \beta|c) \times p(c)\\
+& = p(\boldsymbol{y}|\boldsymbol{x}, \boldsymbol{z}, \beta, c) \times p(\boldsymbol{x}, \boldsymbol{z}, \beta|c) \times p(c)\\
+& \propto p(\boldsymbol{y}|\boldsymbol{x}, \boldsymbol{z}, \beta, c) \times p(c)\\
+& \propto \prod_{i=1}^n\big[\mathbf{1}_{(z_i>c)}y_i  + \mathbf{1}_{(z_i \leq c)}(1-y_i)\big]\times p(c)\\
+& \propto \mathbf{1}_{(\underset{a}{max}(z_i)\leq c < \underset{b}{min}(z_i))}\times p(c)\\
+& = \mathbf{1}_{(\underset{a}{max}(z_i)\leq c < \underset{b}{min}(z_i))} \times \text{normal}(0, \tau_c^2)
+\end{aligned}
+$$
+where set $a = \{z_i|y_i = 1\}$, and set $b = \{z_i | y_i = 0\}$. So $p(c|\boldsymbol{y}, \boldsymbol{x}, \boldsymbol{z}, \beta)$ is a truncated normal density over the interval $\underset{a}{max}(z_i)\leq c < \underset{b}{min}(z_i)$.
+
+For $p(z_i|\boldsymbol{y}, \boldsymbol{x}, z_{-i}, \beta, c)$, we separate it into two cases.
+$$
+\begin{aligned}
+p(z_i|\boldsymbol{y}=1, \boldsymbol{x}, z_{-i}, \beta, c) &= p(z_i|\boldsymbol{y}=1, \boldsymbol{x}, \beta, c)\\
+& \propto \mathbf{1}_{(z_i>c)}\times p(z_i|x_i, \beta)\\
+& = \mathbf{1}_{(z_i>c)} \times \text{normal}(\beta x_i, 1)\\
+p(z_i|\boldsymbol{y}=0, \boldsymbol{x}, z_{-i}, \beta, c) &= p(z_i|\boldsymbol{y}=0, \boldsymbol{x}, \beta, c)\\
+& \propto \mathbf{1}_{(z_i \leq c)} \times p(z_i|x_i, \beta)\\
+& = \mathbf{1}_{(z_i \leq c)} \times \text{normal}(\beta x_i, 1)
+\end{aligned}
+$$
+From the expressions above,  $p(z_i|\boldsymbol{y}, \boldsymbol{x}, z_{-i}, \beta, c)$ is a truncated normal density depending on $y_i$, that is, the normal density is truncated on the right side over the interval $z_i >c$ if $y_i = 1$ and it will be truncated on the left side over the interval $z_i \leq c$.
+
+\vspace{1,5em}
+
+c)Letting $\tau_\beta^2 = \tau_c^2 = 16$ , implement a Gibbs sampling scheme that approximates the joint posterior distribution of $\boldsymbol{Z}$, $\beta$, and $c$ (a method for sampling from constrained normal distributions is outlined in Section 12.1.1). Run the Gibbs sampler long enough so that the effective sample sizes of all unknown parameters are greater than 1,000 (including the $Z_i$’s). Compute the autocorrelation function of the parameters and discuss the mixing of the Markov chain.
+
+```{r}
+library(coda)
+source('/Users/yuanhong/R_Programming/load_data.R')
+divorce <- load_data('divorce.rtf', pattern = ' ')
+divorce <- matrix(divorce, nrow = 25, byrow = T, 
+                  dimnames = list(1:25, c('Diff-age', 'Y')))
+head(divorce)
+
+## truncated normal function, side = left, right, middle
+trunc_normal <- function(side, x1 = 0, x2 = 0, times = 1000)
+{
+  if(side == 'right')
+  {
+    rand_unif <- runif(times, pnorm(x2), 1)
+    rand_norm <- qnorm(rand_unif)
+  }
+  else if(side == 'left')
+  {
+    rand_unif <- runif(times, 0, pnorm(x1))
+    rand_norm <- qnorm(rand_unif)
+  }
+  else
+  {
+    rand_unif <- runif(times, pnorm(x1), pnorm(x2))
+    rand_norm <- qnorm(rand_unif)
+  }
+  rand_norm
+}
+## Gibbs sampling
+tau_beta <- tau_c <- 4
+### initial values beta = c = 0
+beta <- c <- 0
+### iterative time n
+n <- 5000
+BETA <- bigC <- Z <- NULL
+for(s in 1:n)
+{
+  ### update Z
+  z <- NULL
+  for(i in 1:nrow(divorce))
+    {
+       if(divorce[i, 2] == 1)
+         {
+            Sample <- sample(trunc_normal(side = 'right', x2 = c - beta * 
+                                            divorce[i, 1]), 1)
+            zz <- Sample + beta *  divorce[i, 1]
+            z <- c(z, zz)
+         }
+       else
+        {
+            Sample <- sample(trunc_normal(side = 'left', x1 = c - beta * 
+                                            divorce[i, 1]), 1)
+            zz <- Sample + beta *  divorce[i, 1]
+            z <- c(z, zz)
+        }
+    }
+   ### update c
+   set_a <- z[divorce[, 2] == 1]
+   set_b <- z[divorce[, 2] == 0]
+   c <- sample(trunc_normal(side = 'middle', x1 = max(set_b)/tau_c, x2 = 
+                              min(set_a)/tau_c), 1)*tau_c
+  ### update beta
+  mu_beta <- sum(divorce[, 1]*z)/(sum(divorce[, 1]^2) + 1/tau_beta^2)
+  sigma_beta <- sqrt(1/(sum(divorce[, 1]^2)+ 1/tau_beta^2))
+  beta <- rnorm(1, mu_beta, sigma_beta)
+  ### save results
+  Z <- rbind(Z, z)
+  bigC <- c(bigC, c)
+  BETA <- c(BETA, beta)
+}
+head(BETA)
+head(bigC)
+head(Z)
+par(mgp = c(1.75, 0.75, 0), mar = c(3, 3, 2, 1), pin = c(5, 2.5))
+acf(BETA)
+acf(bigC)
+effectiveSize(BETA)
+effectiveSize(bigC)
+plot(BETA, xlab = 'iteration', ylab = expression(beta), 
+     main = paste('traceplot of Gibbs samples for', expression(beta)))
+plot(bigC, xlab = 'iteration', ylab = 'c', 
+     main = 'traceplot of Gibbs samples for c')
+```
+
+Comments: As we have seen in the traceplots above, the  performances of two MCMC samplers  are not bad, and we do not see any sampler takes a long
+time between jumps to different parts of the parameter space. From the atuo-correlation figures, they do not have a high
+degree of autocorrelation. For $\beta$, the autocorrelation after lag-20 reaches as low as 0.2. The same is variable c. The autocorrelation after lag-25 is around 0.2. Therefore, the MCMC samplers have a good mixing.
+
+\vspace{1em}
+
+d)Obtain a $95\%$ posterior confidence interval for $\beta$, as well as $\text{Pr}(\beta >0|\boldsymbol{y}, \boldsymbol{x})$.
+
+
+```{r}
+## CI for beta
+quantile(BETA, c(0.025, 0.975))
+## the probability of beta greater than 0
+sum(BETA > 0)/length(BETA)
+```
+
+\vspace{2em}
+
+# 7.1 Jeffreys’ prior
+For the multivariate normal model, Jeffreys’ rule for generating a prior distribution on $(\boldsymbol{\theta}, \Sigma)$ gives $p_J(\boldsymbol{\theta}, \Sigma)\propto |\Sigma|^{-(p+2)/2}$.
+
+\vspace{1em}
+
+a)Explain why the function $p_J$ cannot actually be a probability density
+for $(\boldsymbol{\theta}, \Sigma)$.
+
+Since the integral of the function does not exist, the function $p_J$ cannot acutally be probability density.
+
+\vspace{1em}
+
+b)Let $p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n})$ be the probability density that is proportional to $p_J(\boldsymbol{\theta}, \Sigma)\times p(\boldsymbol{y_1}, \dots, \boldsymbol{y_n}|\boldsymbol{\theta}, \Sigma)$. Obtain the form of $p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n}), p_J(\boldsymbol{\theta}|\Sigma, \boldsymbol{y_1}, \dots, \boldsymbol{y_n})$ and $p_J(\Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n})$.
+
+$$
+\begin{aligned}
+p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n}) & \propto p_J(\boldsymbol{\theta}, \Sigma)\times p(\boldsymbol{y_1}, \dots, \boldsymbol{y_n}|\boldsymbol{\theta}, \Sigma)\\
+& \propto |\Sigma|^{-(p+2)/2}\times |\Sigma|^{-n/2}\text{exp}\{-\frac12\sum(y_i - \theta)^\prime\Sigma^{-1}(y_i - \theta)\}\\
+& \propto |\Sigma|^{-(n+p+2)/2}\text{exp}\{-\frac12\boldsymbol\theta^\prime n\Sigma^{-1}\boldsymbol\theta + \boldsymbol\theta^\prime n\Sigma^{-1}\bar y\}\\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+p_J(\boldsymbol{\theta}|\Sigma, \boldsymbol{y_1}, \dots, \boldsymbol{y_n}) & \propto p_J(\boldsymbol{\theta}, \Sigma)\times p(\boldsymbol{y_1}, \dots, \boldsymbol{y_n}|\boldsymbol{\theta}, \Sigma)\\
+& = p_J(\boldsymbol{\theta}, \Sigma|\boldsymbol{y_1}, \dots, \boldsymbol{y_n})\\
+& \propto |\Sigma|^{-(n+p+2)/2}\text{exp}\{-\frac12\boldsymbol\theta^\prime n\Sigma^{-1}\boldsymbol\theta + \boldsymbol\theta^\prime n\Sigma^{-1}\bar y\} \\
+& \propto \text{exp}\{-\frac12\boldsymbol\theta^\prime n\Sigma^{-1}\boldsymbol\theta + \boldsymbol\theta^\prime n\Sigma^{-1} \boldsymbol{\bar y}\}\\
+& \sim \text{multivariate normal}(\boldsymbol{\bar y},\Sigma/n)
+\end{aligned}
+$$
+
+\vspace{2em}
+
+# 7.3 Australian crab data
+
+The files *bluecrab.dat* and *orangecrab.dat* contain measurements of body depth $(Y_1)$ and rear width $(Y_2)$, in millimeters, made on 50 male crabs from each of two species, blue and orange. We will model these data using a bivariate normal distribution.
+
+\vspace{1em}
+
+a)For each of the two species, obtain posterior distributions of the population mean $\boldsymbol{\theta}$ and covariance matrix $\Sigma$ as follows: Using the semiconjugate prior distributions for $\boldsymbol{\theta}$ and $\Sigma$, set $\boldsymbol{\mu}_0$ equal to the sample mean of the data, $\boldsymbol{\Lambda}_0$ and $\boldsymbol{S}_0$ equal to the sample covariance matrix and $\nu_0 = 4$. Obtain 10,000 posterior samples of $\boldsymbol{\theta}$ and $\Sigma$. Note that this “prior” distribution loosely centers the parameters around empirical estimates based on the observed data (and is very similar to the unit information prior described in the previous exercise). It cannot be considered as our true prior distribution, as it was derived from the observed data. However, it can be roughly considered as the prior distribution of someone with weak but unbiased information.
+
+\vspace{1.5em}
+
+The prior and posterior distributions of $\boldsymbol \theta, \Sigma$ are as follows.
+$$
+\begin{aligned}
+p(\boldsymbol \theta) &\sim \text{mvnorm}(\boldsymbol \mu_0, \boldsymbol \Lambda_0)\\
+p(\boldsymbol \theta|\boldsymbol y_1, \cdots, \boldsymbol y_n, \Sigma) &\sim \text{mvnorm}(\boldsymbol \mu_n, \boldsymbol \Lambda_n)\\
+p(\Sigma) &\sim \text{Inv-Wishart}(\nu_0, \boldsymbol S_0^{-1})\\
+p(\Sigma|\boldsymbol y_1, \cdots, \boldsymbol y_n, \boldsymbol \theta) &\sim \text{Inv-Wishart}(\nu_0 + n, [\boldsymbol S_0 + \boldsymbol S_\theta]^{-1})
+\end{aligned}
+$$
+where $\boldsymbol \Lambda_n = (\boldsymbol \Lambda_0^{-1} + n\Sigma^{-1})^{-1}$, $\boldsymbol \mu_n = (\boldsymbol \Lambda_0^{-1} + n\Sigma^{-1})^{-1}(\boldsymbol \Lambda^{-1}\boldsymbol \mu_0 + n\Sigma^{-1}\boldsymbol {\bar y})$, and $\boldsymbol S_\theta = \sum(\boldsymbol y_i - \boldsymbol \theta)(\boldsymbol y_i - \boldsymbol \theta)^T$
+
+```{r}
+library(mvtnorm)
+orange <- read.table('orangecrab.txt',  header = F)
+blue <- read.table('bluecrab.txt', header = F)
+dim(orange); dim(blue)
+##Gibbs sampler
+MCMC <- function(data, times)
+{
+  mu_0 <- colMeans(data)
+  nu_0 <- 4
+  lambda_0 <- S_0 <- cov(data)
+  Sigma <- cov(data)
+  n <- dim(data)[1]
+  ybar <- apply(data, 2, mean)
+  THETA <- SIGMA <- NULL
+  for(s in 1:times)
+  {
+    ##update theta
+    lambda_n <- solve(solve(lambda_0) + n*solve(Sigma))
+    mu_n <- lambda_n%*%(solve(lambda_0)%*%mu_0 + n*solve(Sigma)%*%ybar)
+    theta <- rmvnorm(1, mu_n, lambda_n)
+    ##updata Sigma
+    S_n <- S_0 + (t(data) - c(theta))%*%t(t(data) - c(theta))
+    Sigma <- solve(rWishart(1, nu_0 + n, solve(S_n))[,,1])
+    ##save results
+    THETA <- rbind(THETA, theta); SIGMA <- rbind(SIGMA, c(Sigma))
+  }
+  list(THETA, SIGMA)
+}
+posterior_or <- MCMC(orange, times = 10000)
+posterior_blue <- MCMC(blue, times = 10000)
+mean(posterior_or[[1]][, 1] > posterior_blue[[1]][, 1])
+mean(posterior_or[[1]][, 2] > posterior_blue[[1]][, 2])
+```
+
+
+\vspace{1em}
+
+b)Plot values of $\boldsymbol{\theta}=(\theta_1, \theta_2)^\prime$ for each group and compare. Describe any size differences between the two groups.
+
+```{r}
+par(mfrow = c(2, 1), mgp=c(1.75,.75,0),mar=c(3,3,1,1))
+plot(posterior_or[[1]], col = 'gray40', pch = 16, cex = 0.5, xlab = 
+       expression(theta[1]), ylab = expression(theta[2]), xlim = c(10, 14), 
+       ylim = c(11, 18))
+points(x = colMeans(posterior_or[[1]])[1], y = colMeans(posterior_or[[1]])[2] , 
+       col = 'red', pch = 16, cex = 1)
+plot(posterior_blue[[1]], col = 'gray40', pch = 16, cex = 0.5, xlab = 
+       expression(theta[1]), ylab = expression(theta[2]), xlim = c(10, 14), 
+       ylim = c(11, 18))
+points(x = colMeans(posterior_blue[[1]])[1],y = colMeans(posterior_blue[[1]])[2], 
+       col = 'red',pch = 16,  cex = 1)
+```
+
+Comments: From the figures, the orange crab species has higher measurements for both depth and rear width than the blue crab species.
+
+\vspace{1em}
+
+c)From each covariance matrix obtained from the Gibbs sampler, obtain the corresponding correlation coefficient. From these values, plot
+posterior densities of the correlations $\rho_\text{blue}$ and $\rho_\text{orange}$ for the two groups. Evaluate differences between the two species by comparing these posterior distributions. In particular, obtain an approximation to $\text{Pr}(\rho_\text{blue}< \rho_\text{orange}|\boldsymbol{y}_\text{blue}, \boldsymbol{y}_\text{orange})$. What do the results suggest about differences between the two populations?
+
+```{r}
+library(ggplot2)
+covcov <- function(mat)
+  mat[2]/sqrt(mat[1]*mat[4])
+bluecrab_cor <- apply(posterior_blue[[2]], MARGIN = 1, FUN = covcov)
+orangecrab_cor <- apply(posterior_or[[2]], MARGIN = 1, FUN = covcov)
+corr <- c(bluecrab_cor, orangecrab_cor)
+cor_df <- data.frame(species = c(rep('blue', length(bluecrab_cor)), 
+             rep('orange', length(orangecrab_cor))))
+ggplot(cor_df, aes(x = corr, fill = species)) + 
+  geom_density(alpha = 0.5) + 
+  scale_fill_manual(values = c('blue', 'orange'))
+##compute the probability of difference
+mean(orangecrab_cor > bluecrab_cor)
+```
+
+Comments: We first obtain the correlation coefficients for two species. From the result, The orange crab species appears to have higher correlation between its two measurements than the blue species. The probability that the correlation between two measurements for orange crab is higher than that of the blue crab species is `r  paste(mean(orangecrab_cor > bluecrab_cor)* 100, '%', sep = '')`. The differences between these two populations suggest if the depth of one orange crab is large, it is higher probability that the orange crab will have long width in the process of growing up compared to the same depth of one corresponding blue crab.
+
+
