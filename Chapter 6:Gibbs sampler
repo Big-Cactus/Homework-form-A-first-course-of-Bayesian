@@ -1,6 +1,8 @@
+
+### The original file of this code is Rmarkdown file.
 ---
 title: "HW 6 for Statistical Computing"
-author: "Yuanhong Wu"
+author: "Big Cactus"
 date: "2022-10-24"
 output: pdf_document
 header-include:
