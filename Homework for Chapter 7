@@ -1,0 +1,675 @@
+---
+title: "HW 7 for Statistical Computing"
+author: "Big Cactus"
+date: "2022-10-30"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F)
+```
+
+\tableofcontents
+
+\vspace{5em}
+
+# 7.4 Marriage data
+The file *agehw.dat* contains data on the ages of 100 married couples sampled from the U.S. population.
+
+## (a) 
+Before you look at the data, use your own knowledge to formulate a
+semiconjugate prior distribution for $\theta = (\theta_h, \theta_w)^T$ and $\Sigma$, where $\theta_h, \theta_w$ are mean husband and wife ages, and $\Sigma$ is the covariance matrix.
+
+\vspace{1em}
+
+In general, the minimum of age that an individual can marry is 18 years old in all states of  US except two states, Nebraska and Mississippi.$^{[1]}$. And the average life expectancy at birth is 77 years old in 2020.$^{[2]}$. Ideally, as long as people are alive, they may marry. Therefore, the probability of $\theta$ between 18 and 77 is almost close to 1. Because the age distribution of people at first marriage is skewed with a longer tail towards older ages, the majority of people marry before the average age of first marriage. The median age is a more precise representation of when the majority of people marry; for most reporting sources, however, only the average age at marriage is reported.$^{[3]}$
+Estimated median age of Americans at their first wedding in the United States in 2020 is 30 years old for men and 28.2 years old for women.$^{[4]}$ So I choose them to be the mean of $\theta$. Then I will decide the value of the variance of $\theta$. Like I said before, the likelihood that $\theta$ is between 18 and 77 is almost 1. For an approximately normal data set, the values within three standard deviations of the mean account for about $99.7\%$, which is nearly certainty.$^{[5]}$. So we may have the equations below.
+$$
+\begin{aligned}
+p(18<\theta<77) &\approx 0.9973\\
+p(\frac{18-\mu_\theta}{\sigma} < \frac{\theta - \mu_\theta}{\sigma} < \frac{77 -\mu_\theta}{\sigma}) &\approx 0.9973\\
+\Phi(\frac{77 - \mu_\theta}{\sigma}) - \Phi(\frac{18 - \mu_\theta}{\sigma}) & \approx 0.9973
+\end{aligned}
+$$
+Because the mean of $\theta$ is 30 and 28.2, I used the equation above to find a proper variance of $\theta$ which can be shown in the code below.
+
+```{r}
+library(mvtnorm)
+library(ggplot2)
+# write a function to compute the variance of theta
+phi <- function(left_endpoint = 18, right_endpoint = 77, mu, prob = 0.9973)
+{
+  sigma <- seq(1, 6, by = 1)
+  p <- pnorm((right_endpoint - mu)/sigma) - pnorm((left_endpoint - mu)/sigma)
+  value.abs <- abs(p - prob)
+  sigma.min <- min(value.abs)
+  which.sigma.min <- which.min(value.abs)
+  theplot <- function()
+  {
+    par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+    plot(sigma, value.abs, type = 'l', col = 'green', xlab = expression(sigma), 
+         ylab = expression(phi))
+    abline(h = sigma.min, col = 'brown')
+    abline(v = which.sigma.min, col = 'brown')
+    text(x = which.sigma.min + 1, y = sigma.min + 0.002, labels = 
+       paste('(', which.sigma.min, ',',  round(sigma.min, 4), ')', sep = ''))
+  }
+  return(list(round(sigma.min, 4), which.sigma.min, theplot))
+}
+theta.1 <- phi(mu = 30)
+var.min.1 <- theta.1[[2]]
+theta.1[[3]]()
+theta.2 <- phi(mu = 28.2)
+var.min.2 <- theta.2[[2]]
+theta.2[[3]]()
+```
+
+As for the covariance of $\theta$, it is the common sense that a man or woman usually marry the person who has similar age. So I choose $\rho$ which is the correlation coefficient between the age of men and women when they are getting married is equal to 0.6. So now the prior distrbutions for $\theta$ and $\Sigma$ is: 
+$$
+\begin{aligned}
+\theta & \sim \text{mvnormal}(\mu_0, \Lambda_0)\\
+\Sigma & \sim \text{Inv-Wishart}(\nu_0, S^{-1}_0)
+\end{aligned}
+$$
+where $\mu_0 = (30, 28.2)^\prime$, $\Lambda_0 = \begin{pmatrix}16 & 7.2\\7.2 &9\end{pmatrix}$, $\nu_0 = 4$, $S_0 = \begin{pmatrix}16 & 7.2\\7.2&9\end{pmatrix}$.
+
+\vspace{1.5em}
+
+## (b)
+Generate a prior predictive dataset of size $n = 100$, by sampling $(\theta, \Sigma)$ from your prior distribution and then simulating $Y_1,\cdots,Y_n \sim$ i.i.d.multivariate normal $(\theta, \Sigma)$. Generate several such datasets, make bivariate scatterplots for each dataset, and make sure they roughly represent your prior beliefs about what such a dataset would actually
+look like. If your prior predictive datasets do not conform to your beliefs, go back to part a) and formulate a new prior. Report the prior
+that you eventually decide upon, and provide scatterplots for at least
+three prior predictive datasets.
+
+\vspace{1em}
+
+```{r}
+## correlation coefficient
+rho = 0.6
+var.12 <- rho*var.min.1*var.min.2
+mu0 <- c(30, 28.2)
+L0 <- matrix(c(var.min.1^2, var.12, var.12, var.min.2^2), nrow = 2)
+nu0 <- 4; S0 <- L0
+n <- 100 # the number of sample
+s <- 4 # the number of data set
+prior.data <- data.frame(h.age = c(), w.age = c(), num = c())
+set.seed(123)
+for(i in 1:s)
+{
+  # sample theta
+  theta <- rmvnorm(1, mu0, L0)
+  # sample sigma
+  sigma <- solve(matrix(rWishart(1, 4, solve(S0)), nrow = 2))
+  # sample the prior predictive dataset
+  new <- rmvnorm(n, theta, sigma)
+  prior.data <- rbind(prior.data, data.frame(h.age = new[, 1],
+                                             w.age = new[, 2], num = i))
+}
+ggplot(data = prior.data, aes(x = h.age, y = w.age)) + 
+  geom_point() + facet_wrap(~num)
+```
+
+According to the figures above, this prior distributions for $\theta$ and $\Sigma$ roughly conform my beliefs. So the final prior distributions for $\theta$ and $\Sigma$ are
+$$
+\begin{aligned}
+\theta & \sim \text{mvnormal}(\mu_0, \Lambda_0)\\
+\Sigma & \sim \text{Inv-Wishart}(\nu_0, S^{-1}_0)
+\end{aligned}
+$$
+where $\mu_0 = (30, 28.2)^\prime$, $\Lambda_0 = \begin{pmatrix}16 & 7.2\\7.2 &9\end{pmatrix}$, $\nu_0 = 4$, $S_0 = \begin{pmatrix}16 & 7.2\\7.2&9\end{pmatrix}$.
+
+\vspace{1em}
+
+## (c)
+Using your prior distribution and the 100 values in the dataset, obtain an MCMC approximation to $p(\theta, \Sigma|y_1, \cdots, y_{100})$. Plot the joint posterior distribution of $\theta_h$ and $\theta_w$, and also the marginal posterior density of the correlation between $Y_h$ and $Y_w$, the ages of a husband and wife. Obtain $95\%$ posterior confidence intervals for $\theta_h$, $\theta_w$ and the correlation coefficient.
+
+
+```{r}
+agehw <- read.table('agehw.txt', header = T)
+Y <- agehw
+n <- dim(Y)[1]; ybar <- apply(Y, 2, mean)
+Sigma <- cov(Y); THETA <- SIGMA <- NULL
+set.seed(123)
+for(s in 1:5000)
+{
+  ## update theta
+  Ln <- solve(solve(L0) + n*solve(Sigma))
+  mun <- Ln%*%(solve(L0)%*%mu0 + n*solve(Sigma)%*%ybar)
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  Sn <- S0 + ( t(Y) - c(theta) )%*% t( t(Y) - c(theta) )
+  Sigma <- solve(matrix(rWishart(1, nu0 + n, solve(Sn)), nrow = 2))
+  ## save results
+  THETA <- rbind(THETA, theta); SIGMA <- rbind(SIGMA, c(Sigma))
+}
+source('/Users/yuanhong/R_Programming/hdr2d.R')
+par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+plot.hdr2d(THETA,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA[, 2]
+var.h <- SIGMA[, 1]
+var.w <- SIGMA[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+par(fin = c(5, 2.3), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+plot(density(corr))
+## 95% quantile for theta and correlation
+quan.t1.c <- quantile(THETA[, 1], c(0.025, 0.975)); quan.t1.c
+quan.t2.c <- quantile(THETA[, 2], c(0.025, 0.975)); quan.t2.c
+quan.t3.c <- quantile(corr, c(0.025, 0.975)); quan.t3.c
+```
+
+
+
+\vspace{1.5em}
+
+## (d)
+Obtain $95\%$ posterior confidence intervals for $\theta_h$, $\theta_w$ and the correlation coefficient using the following prior distributions:
+i. Jeffreys’ prior, described in Exercise 7.1;
+ii. the unit information prior, described in Exercise 7.2;
+iii. a “diffuse prior” with $\mu_0 = \theta, \Lambda_0 = 10^5 \times \mathbf{I}$, $S_0 = 1000 \times \mathbf{I}$ and $\nu_0 = 3$.
+
+### Jeffreys' prior
+
+```{r}
+## starting points
+n <- dim(Y)[1]
+ybar <- apply(Y, 2, mean)
+Sigma <- cov(Y)
+THETA.i <- SIGMA.i <- NULL
+for(s in 1:5000)
+{
+  ## update theta
+  mun <- ybar; Ln <- Sigma/n
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  nun <- n + 1
+  S.theta <- ( t(Y) - c(theta) )%*%t( t(Y) - c(theta) )
+  Sigma <- solve(matrix(rWishart(1, nun, solve(S.theta)), nrow = 2))
+  ## save results
+  THETA.i <- rbind(THETA.i, theta); SIGMA.i <- rbind(SIGMA.i, c(Sigma))
+}
+# source('/Users/yuanhong/R_Programming/hdr2d.R')
+par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+plot.hdr2d(THETA.i,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA.i[, 2]
+var.h <- SIGMA.i[, 1]
+var.w <- SIGMA.i[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+plot(density(corr))
+## 95% quantile for theta and correlation
+quan.Jeff1 <- quantile(THETA.i[, 1], c(0.025, 0.975)); quan.Jeff1
+quan.Jeff2 <- quantile(THETA.i[, 2], c(0.025, 0.975)); quan.Jeff2
+quan.Jeff3 <- quantile(corr, c(0.025, 0.975)); quan.Jeff3
+```
+
+
+\vspace{1.5em}
+
+### Unit information prior
+
+
+```{r}
+## starting points
+n <- dim(Y)[1]; p <- dim(Y)[2]
+ybar <- apply(Y, 2, mean)
+Sigma <- cov(Y)
+THETA.ii <- SIGMA.ii <- NULL
+for(s in 1:5000)
+{
+  ## update theta
+  mun <- ybar; Ln <- Sigma/(n + 1)
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  nun <- n + p + 2
+  S.theta.sigma <- t( (theta - ybar) )%*%(theta - ybar)
+  Sn <- ( t(Y) - c(theta) )%*%t( t(Y) - c(theta) )*(n + 1)/n + S.theta.sigma
+  Sigma <- solve(matrix(rWishart(1, nun, solve(Sn)), nrow = 2))
+  ## save results
+  THETA.ii <- rbind(THETA.ii, theta); SIGMA.ii <- rbind(SIGMA.ii, c(Sigma))
+}
+# source('/Users/yuanhong/R_Programming/hdr2d.R')
+par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+plot.hdr2d(THETA.ii,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA.ii[, 2]
+var.h <- SIGMA.ii[, 1]
+var.w <- SIGMA.ii[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+plot(density(corr))
+## 95% quantile for theta and correlation
+quan.Unit1 <- quantile(THETA.ii[, 1], c(0.025, 0.975)); quan.Unit1
+quan.Unit2 <- quantile(THETA.ii[, 2], c(0.025, 0.975)); quan.Unit2
+quan.Unit3 <- quantile(corr, c(0.025, 0.975)); quan.Unit3
+```
+
+\vspace{1.5em}
+
+### Diffuse prior
+
+```{r}
+n <- dim(Y)[1]; ybar <- apply(Y, 2, mean)
+Sigma <- cov(Y); THETA.iii <- SIGMA.iii <- NULL
+L0 <- 10^5*diag(1, nrow = 2, ncol = 2)
+mu0 <- c(0, 0)
+S0 <- 1000*diag(1, nrow = 2, ncol = 2)
+nu0 <- 3
+for(s in 1:5000)
+{
+  ## update theta
+  Ln <- solve(solve(L0) + n*solve(Sigma))
+  mun <- Ln%*%(solve(L0)%*%mu0 + n*solve(Sigma)%*%ybar)
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  Sn <- S0 + ( t(Y) - c(theta) )%*% t( t(Y) - c(theta) )
+  Sigma <- solve(matrix(rWishart(1, nu0 + n, solve(Sn)), nrow = 2))
+  ## save results
+  THETA.iii <- rbind(THETA.iii, theta); SIGMA.iii <- rbind(SIGMA.iii, c(Sigma))
+}
+# source('/Users/yuanhong/R_Programming/hdr2d.R')
+par(fin = c(5, 3.2), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+plot.hdr2d(THETA.iii,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA.iii[, 2]
+var.h <- SIGMA.iii[, 1]
+var.w <- SIGMA.iii[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+plot(density(corr))
+## 95% quantile for theta and correlation
+quan.Diffuse1 <- quantile(THETA.iii[, 1], c(0.025, 0.975))
+quan.Diffuse1
+quan.Diffuse2 <- quantile(THETA.iii[, 2], c(0.025, 0.975))
+quan.Diffuse2
+quan.Diffuse3 <- quantile(corr, c(0.025, 0.975))
+quan.Diffuse3
+```
+
+
+\vspace{1.5em}
+
+## (e)
+Compare the confidence intervals from d) to those obtained in c).
+Discuss whether or not you think that your prior information is helpful
+in estimating $\theta$ and $\Sigma$, or if you think one of the alternatives in d) is preferable. What about if the sample size were much smaller, say
+$n = 25$?
+
+\vspace{1em}
+
+```{r}
+# use a table to show and compare these four types of priors
+library(tidyverse)
+library(gt)
+library(ggplot2)
+library(mmtable2)
+quan.1 <- rbind(quan.t1.c, quan.Unit1, quan.Diffuse1, quan.Jeff1)
+quan.2 <- rbind(quan.t2.c, quan.Unit2, quan.Diffuse1, quan.Jeff2)
+quan.3 <- rbind(quan.t3.c, quan.Unit3, quan.Diffuse3, quan.Jeff3)
+quan <- rbind(quan.1, quan.2, quan.3)
+rownames(quan) <- c(rep('theta.h',4), rep('theta.w', 4), 
+                    rep('corr', 4))
+quan <- cbind(round(quan, 5), quantile = rownames(quan))
+rownames(quan) <- NULL
+quan <- cbind(quan, data.frame('type' = rep(c('my prior', 'Unit', 'Diffuse', 
+                                              'Jeffreys'), 3)))
+quan <- as.data.frame(quan)
+quan <- reshape2::melt(quan, id.vars = c('quantile', 'type'), 
+                             variable.name = 'percent', 
+                              value.name = 'value')
+data_wrangled <- quan %>%
+    group_by(percent, quantile) %>%
+    ungroup() %>%
+    pivot_longer(
+        cols = value,
+        values_to = "valu"
+    )
+main_table <- data_wrangled %>%
+    mmtable(cells = valu) +
+    header_top(percent) +
+    header_left(type) +
+    header_left_top(quantile) +
+    header_format(percent, 
+                  list(cell_text(transform = "capitalize"))) +
+    table_format(
+        locations = list(cells_body(rows = c(2, 4))),
+        style = list(cell_borders(sides = "top", 
+                                  color = "grey"))
+                )
+main_table %>%
+    tab_header(
+        title = "table of three types of 95% quantiles"
+    )
+```
+
+\vspace{1.5em}
+
+```{r echo=FALSE}
+Y <- agehw[1:25, ]
+n <- dim(Y)[1]; ybar <- apply(Y, 2, mean)
+Sigma <- cov(Y); THETA <- SIGMA <- NULL
+set.seed(123)
+for(s in 1:5000)
+{
+  ## update theta
+  Ln <- solve(solve(L0) + n*solve(Sigma))
+  mun <- Ln%*%(solve(L0)%*%mu0 + n*solve(Sigma)%*%ybar)
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  Sn <- S0 + ( t(Y) - c(theta) )%*% t( t(Y) - c(theta) )
+  Sigma <- solve(matrix(rWishart(1, nu0 + n, solve(Sn)), nrow = 2))
+  ## save results
+  THETA <- rbind(THETA, theta); SIGMA <- rbind(SIGMA, c(Sigma))
+}
+# source('/Users/yuanhong/R_Programming/hdr2d.R')
+# par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+# plot.hdr2d(THETA,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+# abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA[, 2]
+var.h <- SIGMA[, 1]
+var.w <- SIGMA[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+# plot(density(corr))
+## 95% quantile for theta and correlation
+quan.t1.c <- quantile(THETA[, 1], c(0.025, 0.975)); 
+quan.t2.c <- quantile(THETA[, 2], c(0.025, 0.975)); 
+quan.t3.c <- quantile(corr, c(0.025, 0.975)); 
+
+
+
+
+
+
+Sigma <- cov(Y)
+THETA.i <- SIGMA.i <- NULL
+for(s in 1:5000)
+{
+  ## update theta
+  mun <- ybar; Ln <- Sigma/n
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  nun <- n + 1
+  S.theta <- ( t(Y) - c(theta) )%*%t( t(Y) - c(theta) )
+  Sigma <- solve(matrix(rWishart(1, nun, solve(S.theta)), nrow = 2))
+  ## save results
+  THETA.i <- rbind(THETA.i, theta); SIGMA.i <- rbind(SIGMA.i, c(Sigma))
+}
+# source('/Users/yuanhong/R_Programming/hdr2d.R')
+# par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+# plot.hdr2d(THETA.i,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+# abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA.i[, 2]
+var.h <- SIGMA.i[, 1]
+var.w <- SIGMA.i[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+# plot(density(corr))
+## 95% quantile for theta and correlation
+quan.Jeff1 <- quantile(THETA.i[, 1], c(0.025, 0.975)); 
+quan.Jeff2 <- quantile(THETA.i[, 2], c(0.025, 0.975)); 
+quan.Jeff3 <- quantile(corr, c(0.025, 0.975)); 
+
+
+
+## starting points
+p <- dim(Y)[2]
+Sigma <- cov(Y)
+THETA.ii <- SIGMA.ii <- NULL
+for(s in 1:5000)
+{
+  ## update theta
+  mun <- ybar; Ln <- Sigma/(n + 1)
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  nun <- n + p + 2
+  S.theta.sigma <- t( (theta - ybar) )%*%(theta - ybar)
+  Sn <- ( t(Y) - c(theta) )%*%t( t(Y) - c(theta) )*(n + 1)/n + S.theta.sigma
+  Sigma <- solve(matrix(rWishart(1, nun, solve(Sn)), nrow = 2))
+  ## save results
+  THETA.ii <- rbind(THETA.ii, theta); SIGMA.ii <- rbind(SIGMA.ii, c(Sigma))
+}
+# source('/Users/yuanhong/R_Programming/hdr2d.R')
+# par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+# plot.hdr2d(THETA.ii,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+# abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA.ii[, 2]
+var.h <- SIGMA.ii[, 1]
+var.w <- SIGMA.ii[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+# plot(density(corr))
+## 95% quantile for theta and correlation
+quan.Unit1 <- quantile(THETA.ii[, 1], c(0.025, 0.975)); 
+quan.Unit2 <- quantile(THETA.ii[, 2], c(0.025, 0.975)); 
+quan.Unit3 <- quantile(corr, c(0.025, 0.975)); 
+
+
+
+
+n <- dim(Y)[1]; ybar <- apply(Y, 2, mean)
+Sigma <- cov(Y); THETA.iii <- SIGMA.iii <- NULL
+L0 <- 10^5*diag(1, nrow = 2, ncol = 2)
+mu0 <- c(0, 0)
+S0 <- 1000*diag(1, nrow = 2, ncol = 2)
+nu0 <- 3
+for(s in 1:5000)
+{
+  ## update theta
+  Ln <- solve(solve(L0) + n*solve(Sigma))
+  mun <- Ln%*%(solve(L0)%*%mu0 + n*solve(Sigma)%*%ybar)
+  theta <- rmvnorm(1, mun, Ln)
+  ## update Sigma
+  Sn <- S0 + ( t(Y) - c(theta) )%*% t( t(Y) - c(theta) )
+  Sigma <- solve(matrix(rWishart(1, nu0 + n, solve(Sn)), nrow = 2))
+  ## save results
+  THETA.iii <- rbind(THETA.iii, theta); SIGMA.iii <- rbind(SIGMA.iii, c(Sigma))
+}
+# source('/Users/yuanhong/R_Programming/hdr2d.R')
+# par(fin = c(5, 2.75), mgp = c(1.75, 0.75, 0), mar =c(3, 3, 1, 1))
+# plot.hdr2d(THETA.iii,xlab=expression(theta[h]),ylab=expression(theta[w]) )
+# abline(0,1)
+
+## the marginal posterior density of the correlation
+cor.hw <- SIGMA.iii[, 2]
+var.h <- SIGMA.iii[, 1]
+var.w <- SIGMA.iii[, 4]
+corr <- cor.hw/sqrt(var.h*var.w)
+# plot(density(corr))
+## 95% quantile for theta and correlation
+quan.Diffuse1 <- quantile(THETA.iii[, 1], c(0.025, 0.975)); 
+quan.Diffuse2 <- quantile(THETA.iii[, 2], c(0.025, 0.975)); 
+quan.Diffuse3 <- quantile(corr, c(0.025, 0.975)); 
+
+
+# use a table to show and compare these four types of priors
+library(tidyverse)
+library(gt)
+library(ggplot2)
+library(mmtable2)
+quan.1 <- rbind(quan.t1.c, quan.Unit1, quan.Diffuse1, quan.Jeff1)
+quan.2 <- rbind(quan.t2.c, quan.Unit2, quan.Diffuse1, quan.Jeff2)
+quan.3 <- rbind(quan.t3.c, quan.Unit3, quan.Diffuse3, quan.Jeff3)
+quan <- rbind(quan.1, quan.2, quan.3)
+rownames(quan) <- c(rep('theta.h',4), rep('theta.w', 4), 
+                    rep('corr', 4))
+quan <- cbind(round(quan, 5), quantile = rownames(quan))
+rownames(quan) <- NULL
+quan <- cbind(quan, data.frame('type' = rep(c('my prior', 'Unit', 'Diffuse', 
+                                              'Jeffreys'), 3)))
+quan <- as.data.frame(quan)
+quan <- reshape2::melt(quan, id.vars = c('quantile', 'type'), variable.name = 
+                         'percent', value.name = 'value')
+data_wrangled <- quan %>%
+    group_by(percent, quantile) %>%
+    ungroup() %>%
+    pivot_longer(
+        cols = value,
+        values_to = "valu"
+    )
+main_table <- data_wrangled %>%
+    mmtable(cells = valu) +
+    header_top(percent) +
+    header_left(type) +
+    header_left_top(quantile) +
+    header_format(percent, list(cell_text(transform = "capitalize"))) +
+    table_format(
+        locations = list(cells_body(rows = c(2, 4))),
+        style = list(cell_borders(sides = "top", color = "grey"))
+       )
+main_table %>%
+    tab_header(
+        title = "table of three types of 95% quantiles(n = 25)"
+    )
+```
+Comments: From the table above, the $95\%$ quantiles for all the prior distributions are very close. But we look at the the ages of husband and wife. For $\theta_h$, only the results from the prior I chose is smaller than other priors which are  close to each other. Specially, the age of husband from my prior is 2 years old younger than that from other priors. When we look at the age of wife, Jeffreys' prior and unit prior have very similar results. Diffuse prior has bigger results. Conversely, the results from my prior are smaller. Since the size of sample is big, these priors may not have very big differences. I have printed out the quantiles for small sample size without code which are similar to the situation where n = 100. As we can see, only two priors still keep "robust", Jeffreys'prior and unit prior. 
+
+\vspace{1.5em}
+
+# 7.5 Imputation
+
+The file *interexp.dat* contains data from an experiment that
+was interrupted before all the data could be gathered. Of interest was the
+difference in reaction times of experimental subjects when they were given
+stimulus A versus stimulus B. Each subject is tested under one of the two
+stimuli on their first day of participation in the study, and is tested under
+the other stimulus at some later date. Unfortunately the experiment was
+interrupted before it was finished, leaving the researchers with 26 subjects
+with both A and B responses, 15 subjects with only A responses and 17
+subjects with only B responses.
+
+\vspace{1em}
+
+## (a)
+Calculate empirical estimates of $\theta_A, \theta_B, \rho, \sigma_A^2 , \sigma_B^2$ from the data using the commands *mean* , *cor* and *var* . Use all the A responses to get $\hat \theta_A$ and $\hat \sigma^2_A$ , and use all the B responses to get $\hat \theta_B$ and $\hat \sigma_B$ . Use only
+the complete data cases to get $\hat \rho$.
+
+```{r}
+exp <- read.table('interexp.txt', header = T)
+# head(exp)
+dim(exp)
+complete <- complete.cases(exp)
+theta_A_hat <- mean(exp[, 1], na.rm = T); theta_A_hat
+sigma2A_hat <- var(exp[, 1], na.rm = T); sigma2A_hat
+theta_B_hat <- mean(exp[, 2], na.rm = T); theta_B_hat
+sigma2B_hat <- var(exp[, 2], na.rm = T); sigma2B_hat
+cor_hat <- cor(exp[complete, ])[1, 2]; cor_hat
+```
+
+\vspace{2em}
+
+
+\vspace{1em}
+
+## (b)
+For each person $i$ with only an A response, impute a B response as 
+$$
+\hat y_{i, B} = \hat \theta_B + (y_{i, A} - \hat \theta_A)\hat\rho\sqrt{\hat \sigma_B^2/\hat \sigma_A^2}
+$$
+
+For each person $i$ with only a B response, impute an A response as
+$$
+\hat y_{i, A} = \hat \theta_A + (y_{i, B} - \hat \theta_B)\hat\rho\sqrt{\hat \sigma_A^2/\hat \sigma_B^2}
+$$
+
+You now have two "observations" for each individual. Do a paired sample t test and obtain a $95\%$ confidence interval for $\theta_A - \theta_B$.
+
+```{r}
+exp.1 <- exp
+n.A <- which(is.na(exp[, 1])); n.A
+n.B <- which(is.na(exp[, 2])); n.B
+rate <- sqrt(sigma2A_hat/sigma2B_hat)
+for(a in n.A)
+  exp.1[a, 1] <- theta_A_hat + (exp.1[a, 2] - theta_B_hat)*cor_hat*rate
+for(b in n.B)
+  exp.1[b, 2] <- theta_B_hat + (exp.1[b, 1] - theta_A_hat)*cor_hat*1/rate
+# exp.1
+t.test(exp.1[, 1],exp.1[, 2], paired = T)
+```
+Comments: The result of paired t test and the $95\%$ confidence interval for $\theta_A - \theta_B$ are in the printout above. 
+
+
+\vspace{1em}
+
+## (c)
+Using either Jeffreys’ prior or a unit information prior distribution for
+the parameters, implement a Gibbs sampler that approximates the
+joint distribution of the parameters and the missing data. Compute
+a posterior mean for $\theta_A - \theta_B$ as well as a $95\%$ posterior confidence interval for $\theta_A - \theta_B$. Compare these results with the results from b)and discuss.
+
+```{r}
+p <- 2
+n <- nrow(exp)
+O <- exp
+O <- ifelse(is.na(O), 0, 1)
+### starting values
+Y.full <- exp
+Sigma <- cov(exp[complete, ])
+for(j in 1:p)
+  Y.full[is.na(exp[, j]), j] <- mean(Y.full[, j], na.rm = T)
+
+
+### Gibbs sampler
+library(mvtnorm)
+THETA <- SIGMA <- Y.MISS <- NULL
+set.seed(1)
+for(s in 1:1000)
+{
+  ### update theta
+  ybar <- apply(Y.full, 2, mean)
+  theta <- rmvnorm(1, ybar, Sigma/n)
+  
+  ### update Sigma
+  Stheta <- ( t(Y.full) - c(theta) )%*%t( t(Y.full) - c(theta) )
+  Sigma <- solve( matrix(rWishart(1, n - 3, solve(Stheta)), 2, 2) )
+  
+  ### update missing data
+  na <- as.vector(which(apply(exp, 1, anyNA)))
+  for(i in na)
+  {
+    a <- O[i, ] == 1
+    b <- O[i, ] == 0
+    invSa <- solve(Sigma[a, a])
+    s2.i <- Sigma[b, b] - Sigma[b, a]%*%invSa%*%Sigma[a, b]
+    theta.i <- theta[b] + Sigma[b, a]%*%invSa%*%(t(Y.full[i, a]) - theta[a])
+    Y.full[i, b] <- rmvnorm(1, theta.i, s2.i)
+  }
+  
+  ### save results
+  THETA <- rbind(THETA, theta)
+  SIGMA <- rbind(SIGMA, c(Sigma))
+  Y.MISS <- rbind(Y.MISS, Y.full[O == 0])
+  
+ # cat(s, theta, '\n')
+}
+head(THETA)
+head(SIGMA)
+head(Y.MISS)
+## theta.A - theta.B
+mean(THETA[, 1] - THETA[, 2])
+## 95% confidence interval
+quantile(THETA[, 1] - THETA[, 2], c(0.025, 0.975))
+```
+Comments: I chose Jeffreys' density for prior distribution of $\theta$ and $\Sigma$. Then I found their posterior distributions for $\theta$ and $\Sigma$. At last, Gibbs sampler is used to obtain the posterior samples. From part b, we obtained mean difference is $-0.6117$ and the $95\%$ confidence interval for $\theta_A - \theta_B$ is $(-0.9850, -0.2383)$. For part c, the mean difference is $-0.5864$ and the $95\%$ confidence interval is $(-1.3186, 0.0911)$. We compare the two results. I think the way of imputation in part b has a better performance because $95\%$ confidence interval using Gibbs sampling has some positive values and the bandwidth of the interval using Gibbs sampling is almost twice as long as that of the interval using the way of imputation in part b.
+
+# References
+
+ 1.$\,$[Marriage age in the United States, https://en.wikipedia.org/wiki/Marriage_age_in_the_United_States](https://en.wikipedia.org/wiki/Marriage_age_in_the_United_States)
+
+2.$\,$[Life expectancy at birth, total (years) - United States, https://data.worldbank.org/indicator/SP.DYN.LE00.IN?locations=US](https://data.worldbank.org/indicator/SP.DYN.LE00.IN?locations=US)    
+
+
+3.$\,$[List of countries by age at first marriage, https://en.wikipedia.org/wiki/List_of_countries_by_age_at_first_marriage](https://en.wikipedia.org/wiki/List_of_countries_by_age_at_first_marriage)
+
+4.$\,$[Estimated median age of Americans, https://www.statista.com/statistics/371933/median-age-of-us-americans-at-their-first-wedding/](https://www.statista.com/statistics/371933/median-age-of-us-americans-at-their-first-wedding/)
+
+5.$\,$[3 $\sigma$ rule, https://en.wikipedia.org/wiki/68–95–99.7_rule](https://en.wikipedia.org/wiki/68–95–99.7_rule)
