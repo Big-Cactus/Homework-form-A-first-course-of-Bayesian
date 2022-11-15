@@ -1,0 +1,245 @@
+---
+title: "HW 8 for Statistics Computing"
+author: "Big Cactus"
+date: "2022-11-10"
+output: pdf_document
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{amsmath}
+  - \usepackage{mathtools}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 10.1 Reflecting random walks
+\textcolor{orange}{It is often useful in MCMC to have a proposal distribution which is both symmetric and has support only on a certain region. For example, if we know $\theta > 0$, we would like our proposal distribution $J(\theta_1|\theta_0)$ to have support on positive $\theta$ values. Consider the following proposal algorithm:}
+
+\textcolor{orange}{$\bullet$ sample $\tilde \theta \sim \text{uniform} (\theta_0 - \delta, \theta_0 + \delta)$;}
+
+\textcolor{orange}{$\bullet$ if $\tilde \theta < 0$, set $\theta_1 = - \tilde \theta$;}
+
+\textcolor{orange}{$\bullet$ if $\tilde \theta \ge 0$, set $\theta_1 = \tilde \theta$.}
+
+\textcolor{orange}{In other words, $\theta_1 = |\tilde \theta|$. Show that the above algorithm draws samples from a symmetric proposal distribution which has support on positive values of $\theta$. It may be helpful to write out the associated proposal density $J(\theta_1 | \theta_0)$ under the two conditions $\theta_0 \le \delta$ and $\theta_0 > \delta$ separately.}
+
+\vspace{1.5em}
+
+Firstly, $\theta_1 = |\tilde \theta|$, and $\tilde \theta \sim \text{uniform}(\theta_0 - \delta, \theta_0 + \delta)$, obviously $\theta_1 \ge 0$, which shows this proposal distribution has support on positive values of $\theta$.
+
+Then, we prove the proposal distribution is symmetric.
+
+According to the definition of the symmetric proposal distribution, we need to show $J(\theta_1|\theta_0) = J(\theta_0|\theta_1)$.
+
+Since the question does not specify the relation of $\theta_0$ and $\delta$, the interval of the uniform distribution could contain 0 or could not contain 0. So we divide the range of $\theta_0$ into two cases, $0 < \theta_0 \le \delta$ and $\theta_0 > \delta$. 
+
+The proposal density is as follows:
+$$
+J(\theta_1|\theta_0) = \begin{cases}
+\frac1{\delta}, & 0< \theta_0 \le \delta, \,0 < \theta_1 \le \delta - \theta_0;\\
+\frac1{2\delta}, & 0< \theta_0 \le \delta, \, \delta - \theta_0 < \theta_1 \le \theta_0 + \delta;\\
+\frac1{2\delta}, & \theta_0 > \delta, \, \theta_0 - \delta\le \theta_1 \le \theta_0 + \delta;\\
+0, & \text{otherwise}.
+\end{cases}
+$$
+
+In order to see the areas clearly, I visualized this proposal distribution below.
+
+```{r}
+par(mar = c(3, 3, 1, 1), mgp = c(1.75, 0.75, 0), pin = c(3, 3))
+plot(NA, xlim = c(-1, 7), ylim = c(-1, 7), xlab = '', ylab = '', axes = F)
+abline(h = 0, v = 0)
+polygon(c(0 , 0, 3), c(0, 3, 0), col = 'ivory3', border = NA)
+polygon(c(0, 4, 7, 3), c(3, 7, 4, 0), col = 'ivory2', border = NA)
+text(6.5, -0.5, labels = expression(theta[0]))
+text(-0.5, 6.5, labels = expression(theta[1]))
+text(2.7, -0.3, labels = expression(delta))
+text(-0.3, 2.7, labels = expression(delta))
+text(0.8, 0.8, labels = expression(frac(1, delta)))
+text(4, 4, labels = expression(frac(1, 2*delta)))
+```
+
+Next, I compute the proposal distribution of $J(\theta_0|\theta_1)$ which is as follows.
+$$
+J(\theta_0|\theta_1) = \begin{cases}
+\frac1{\delta}, & 0< \theta_1 \le \delta, \,0 < \theta_0 \le \delta - \theta_1;\\
+\frac1{2\delta}, & 0< \theta_1 \le \delta, \, \delta - \theta_1 < \theta_0 \le \theta_1 + \delta;\\
+\frac1{2\delta}, & \theta_1 > \delta, \, \theta_1 - \delta \le \theta_0 \le \theta_1 + \delta;\\
+0, & \text{otherwise}.
+\end{cases}
+$$
+The graph of $J(\theta_0|\theta_1)$ is 
+
+```{r echo=FALSE}
+par(mar = c(3, 3, 1, 1), mgp = c(1.75, 0.75, 0), pin = c(3, 3))
+plot(NA, xlim = c(-1, 7), ylim = c(-1, 7), xlab = '', ylab = '', axes = F)
+abline(h = 0, v = 0)
+polygon(c(0 , 0, 3), c(0, 3, 0), col = 'ivory3', border = NA)
+polygon(c(0, 4, 7, 3), c(3, 7, 4, 0), col = 'ivory2', border = NA)
+text(6.5, -0.5, labels = expression(theta[0]))
+text(-0.5, 6.5, labels = expression(theta[1]))
+text(2.7, -0.3, labels = expression(delta))
+text(-0.3, 2.7, labels = expression(delta))
+text(0.8, 0.8, labels = expression(frac(1, delta)))
+text(4, 4, labels = expression(frac(1, 2*delta)))
+```
+
+Therefore, as is shown, the two figures are the same, which shows $J(\theta_1|\theta_0) = J(\theta_0|\theta_1)$. 
+
+
+\vspace{1.5em}
+
+# 10.2 Nesting success
+Younger male sparrows may or may not nest during a mating season, perhaps depending on their physical characteristics. Researchers have recorded the nesting success of 43 young male sparrows of the same age, as well as their wingspan, and the data appear in the file *msparrownest.dat*. Let $Y_i$ be the binary indicator that sparrow $i$ successfully nests, and let $x_i$ denote their wingspan. Our model for $Y_i$ is
+$\text{logit} \, \text{Pr}(Y_i = 1|\alpha, \beta, x_i) = \alpha + \beta x_i$, where the logit function is given by $\text{logit}\,  \theta = \log [\theta/(1 - \theta)]$.
+
+## (a)
+\textcolor{orange}{Write out the joint sampling distribution $\prod_{i = 1}^n p(y_i|\alpha, \beta, x_i)$ and simplify as much as possible.}
+
+$$
+\begin{aligned}
+p(y_i|\alpha, \beta, x_i) &= (\frac{e^{\alpha + \beta x_i}}{1 + e^{\alpha + \beta x_i}})^{y_i}(\frac1{1 + e^{\alpha + \beta x_i}})^{1 - y_i}\\
+& = \frac{(e^{\alpha + \beta x_i})^{y_i}}{1 + e^{\alpha + \beta x_i}}
+\end{aligned}
+$$
+$$
+\begin{aligned}
+\prod_{i = 1}^n p(y_i|\alpha, \beta, x_i) & = \prod_{i = 1}^n  \frac{(e^{\alpha + \beta x_i})^{y_i}}{1 + e^{\alpha + \beta x_i}} \\
+&= \frac{\prod_{i = 1}^n e^{\alpha y_i + \beta x_i y_i}}{\prod_{i = 1}^n(1 + e^{\alpha + \beta x_i})}\\
+&= \frac{e^{\alpha \sum y_i + \beta\sum x_iy_i}}{\prod_{i = 1}^n(1 + e^{\alpha + \beta x_i})}
+\end{aligned}
+$$
+
+
+\vspace{1.5em}
+
+## (b)
+\textcolor{orange}{Formulate a prior probability distribution over $\alpha$ and $\beta$ by considering the range of $\text{Pr}\, (Y = 1| \alpha, \beta, x)$ as $x$ ranges over 10 to 15, the approximate range of the observed wingspans.}
+
+
+According to our experience, the normal distribution is a good choice as a prior distribution for $\alpha$ and $\beta$. So now let's find the approximate means for $\alpha$ and $\beta$.
+
+From the question, we set $\text{Pr}\, (Y = 1| \alpha, \beta, x) = 0.1$ when $x = 10$ and $\text{Pr}\, (Y = 1| \alpha, \beta, x) = 0.9$ when $x$ is equal to 15. Then we solve the two equations below to obtain the means for $\alpha$ and $\beta$.
+
+$$
+\begin{aligned}
+\begin{dcases}
+\log\frac{0.1}{1 - 0.1} = \alpha + \beta \times 10\\
+\log\frac{0.9}{1 - 0.9} = \alpha + \beta \times 15
+\end{dcases}
+\end{aligned}
+$$
+We get $\alpha = -10.986$ and $\beta = 0.879$. And the variances of $\alpha$ and $\beta$ are set $5^2$ and $0.5^2$, respectively according to trial and error.
+
+Therefore, the prior distribution for $\alpha$ is $\text{normal}(-10.986, 25)$ and for $\beta$, the prior distribution is $\text{normal}(0.879, 0.25)$.
+
+
+
+\vspace{1.5em}
+
+## (c)
+\textcolor{orange}{Implement a Metropolis algorithm that approximates $p(\alpha, \beta|y, x)$. Adjust the proposal distribution to achieve a reasonable acceptance
+rate, and run the algorithm long enough so that the effective sample
+size is at least 1,000 for each parameter.}
+
+```{r}
+library(coda)
+msparrow <- read.table('msparrownest.txt', header = F)
+dim(msparrow)
+head(msparrow)
+colnames(msparrow) <- c('yi', 'xi')
+y <- msparrow$yi ; X<-cbind(rep(1,length(y)), msparrow$xi)
+yX<-cbind(y,X)
+colnames(yX)<-c("binary","intercept", "wingspan") 
+n<-length(y) ; p<-dim(X)[2]
+pmn.beta<- c(-10.986, 0.879)
+psd.beta<-c(5, 0.5)
+var.prop<- var(log(y+1/2))*solve( t(X)%*%X )
+beta<-rep(0,p)
+S<-100000
+BETA<-matrix(0,nrow=S,ncol=p)
+ac<-0
+set.seed(1)
+## rmvnorm function for proposals
+rmvnorm<-function(n,mu,Sigma)
+{ # samples from the multivariate normal distribution
+  E<-matrix(rnorm(n*length(mu)),n,length(mu))
+  t(  t(E%*%chol(Sigma)) +c(mu))
+}
+new.var <- var.prop
+new.var[1, 1] <- new.var[1, 1] + 0.06
+new.var[2, 2] <- new.var[2, 2] + 0.006
+## MCMC
+for(s in 1:S) 
+{
+#propose a new beta
+beta.p<- t(rmvnorm(1, beta, new.var))
+lhr<- sum(dbinom(y, 1, exp(X%*%beta.p)/(1 + exp(X%*%beta.p)),log=T)) -
+      sum(dbinom(y,1, exp(X%*%beta)/(1 + exp(X%*%beta)), log=T)) +
+      sum(dnorm(beta.p, pmn.beta, psd.beta,log=T)) -
+      sum(dnorm(beta, pmn.beta, psd.beta,log=T))
+if( log(runif(1))< lhr ) 
+  { beta<-beta.p ; ac<-ac+1 }
+BETA[s,] <- beta
+}
+cat(ac/S,"\n")
+library(coda)
+apply(BETA, 2, effectiveSize)
+```
+
+Comments: The proposal distribution I used is multivariate normal distribution with mean the current coefficient and variance $\hat \sigma^2 (\boldsymbol{X}^T\boldsymbol{X})^{-1}$ where $\hat \sigma^2$ is the sample variance. I run the algorithm 100000 times so that the effective sample size is at least 1000 for each parameter. The acceptance rate is about $35\%$.
+
+\vspace{1.5em}
+
+## (d)
+Compare the posterior densities of $\alpha$ and $\beta$ to their prior densities.
+
+```{r}
+skeep<-seq(10, S, by=10)
+plot(skeep, BETA[, 1][skeep], type="l",xlab="iteration",ylab=expression(beta[1]))
+
+hist(BETA[, 1][-(1:50)], prob=TRUE, main="",xlab=expression(beta[1]),ylab="density")
+th<-seq(min(BETA[, 1]),max(BETA[, 1]),length=100)
+lines(th, dnorm(th, pmn.beta[1], psd.beta[1]))
+
+plot(skeep, BETA[, 2][skeep], type="l",xlab="iteration",ylab=expression(beta[2]))
+
+hist(BETA[, 2][-(1:50)], prob=TRUE, main="",xlab=expression(beta[2]),ylab="density")
+th<-seq(min(BETA[, 2]),max(BETA[, 2]),length=1000)
+lines(th, dnorm(th, pmn.beta[2], psd.beta[2]))
+```
+
+Comments: From the figures, we found the prior distributions have lower probability at around the means and have higher probability at other values. So the posterior distributions have lower variance compared to the prior one. 
+
+\vspace{1.5em}
+
+## (e)
+
+Using output from the Metropolis algorithm, come up with a way to
+make a confidence band for the following function $f_{\alpha \beta}(x)$ of wingspan:
+$$
+f_{\alpha \beta}(x) = \frac{e^{\alpha + \beta x}}{1 + e^{\alpha + \beta x}}
+$$
+where $\alpha$ and $\beta$ are the parameters in your sampling model. Make a
+plot of such a band.
+
+```{r}
+par(mar = c(4, 4, 1, 1), mgp = c(1.75, 0.75, 0))
+f <- exp(t(X%*%t(BETA)))/( 1 + exp(t(X%*%t(BETA))) )
+conf.band<-apply( f, 2 ,quantile ,probs = c(.025,.5,.975))
+plot( c(10, 16),range(c(0, 1)), type="n", xlab = "the length of wingspan",
+   ylab = "probability")
+xs<-seq(0, 1, length = dim(conf.band)[2]) 
+id <- order(msparrow$xi)
+ord.wingspan <- msparrow$xi[id]
+lines(ord.wingspan, conf.band[1,][id], col = "black", lwd = 1)
+lines(ord.wingspan, conf.band[2,][id], col = "black", lwd = 2)
+lines(ord.wingspan, conf.band[3,][id], col = "black", lwd = 1)
+```
+
+Comments: As is shown, the figure gives $2.5\%, 50\%, 97.5\%$ posterior quantiles for $f_{\alpha \beta}$ which is the probability of successfully nesting for a sparrow. We can find the probability goes larger as the length of a sparrow's wings grows longer.
+
+
+
+
